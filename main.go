@@ -253,7 +253,7 @@ func main() {
 	// Open file and read in line by line
 	var lines []string
 
-	file, err := os.Open("tgt.lark")
+	file, err := os.Open("example/example.lark")
 	if err != nil {
 		panic(err)
 	}
@@ -270,7 +270,7 @@ func main() {
 
 	html := parseLarkToHTML(encodeLark(lines))
 
-	fmt.Println("<html><head><link rel='stylesheet' href='style.css'></head><body>")
+	fmt.Println("<html><head></head><body>")
 	fmt.Println(html)
 	fmt.Println("</body></html>")
 }

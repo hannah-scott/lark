@@ -1,0 +1,346 @@
+= Designing a markup language
+~hannah
++2023-07-27
+
+This document represents my attempt to design a markup language for HD-DN. It's heavily inspired by
+
+* gemtext
+* markdown
+* m150's HTML journal specification
+* micro-markups I've made in the past
+
+- Motivations
+
+* Markdown sucks
+* Writing HTML sucks
+* Making things is fun
+
+- Design details
+
+It's going to be line-based for simplicity --- no in-line markup. It should also be readable.
+
+_ Structure
+
+A lark is structured as a series of articles. Each article is composed of sections, and each section is made up of blocks. An example lark might look like this:
+
+'''
++--------------------------------------+
+|  lark                                |
+|  +--------------------------------+  |
+|  |  article                       |  |
+|  |  +--------------------------+  |  |
+|  |  | section                  |  |  |
+|  |  | +---------------------+  |  |  |
+|  |  | | block               |  |  |  |
+|  |  | +---------------------+  |  |  |
+|  |  +--------------------------+  |  |
+|  |                                |  |
+|  |  +--------------------------+  |  |
+|  |  | section                  |  |  |
+|  |  | +---------------------+  |  |  |
+|  |  | | block               |  |  |  |
+|  |  | +---------------------+  |  |  |
+|  |  | +---------------------+  |  |  |
+|  |  | | block               |  |  |  |
+|  |  | +---------------------+  |  |  |
+|  |  | +---------------------+  |  |  |
+|  |  | | block               |  |  |  |
+|  |  | +---------------------+  |  |  |
+|  |  +--------------------------+  |  |
+|  +--------------------------------+  |
++--------------------------------------+
+'''
+
+This is a lark made up of a single article. The article is made up of two sections: the first contains a single block, while the second contains three blocks.
+
+- Glyphs & blocks
+
+Glyphs are used to indicate the type of block being written. They are always the first character of a line. If the first character of a line is not a glyph, then the assumption is that the block being written is a paragraph.
+
+'''
+  =    Header
+  -    Subheader
+  _    Subsubheader
+  +    Date
+  ~    Author
+  @    Link
+  !    Image
+  >    Blockquote
+  *    Unordered list
+  :    Ordered list
+  '''  Toggles pre
+  ```  Toggles pre code
+  ---  Section divider
+  ***  Article divider
+'''
+
+lark attempts to be a simple but strict superset of gemtext. You should be able to convert valid gemtext into valid lark using less than 10 lines of simple shell script. If this isn't possible, then lark has failed in its goals.
+
+```sh
+#!/bin/sh
+cat example.gmi \
+  | sed -e "s/^### /_/g" \   # Subsubheaders
+  | sed -e "s/^## /-/g" \    # Subheaders
+  | sed -e "s/^# /=/g" \     # Headers
+  | sed -e "s/^```/'''/g" \  # Preformatted text
+  | sed -e "s/^=>/@/g" \     # Links
+  > example.lark
+```
+
+_ Content
+
+Content is everything on a line that isn't a glyph. If there is no glyph, the whole line is content and is considered to be 
+
+***
+
+- Block specifications
+
+_ Paragraphs
+
+Paragraphs are
+
+* a single line
+* not starting with a glyph
+
+Paragraph specifications are the same as for gemtext: a completely blank line will be read as an empty paragraph.
+
+_ Headings
+
+Headings are
+
+* a single line
+* starting with a glyph
+* followed by any number of whitespace characters
+* and then some content
+
+```lark
+= This is a main header  
+- And a subheader
+_ A subsubheader now
+```
+
+All whitespace between the glyph and the first non-whitespace character will be ignored. Everything else, including whitespace, will be read verbatim.
+
+_ Links and images
+
+Links and images are
+
+* a single line
+* starting with a glyph
+* followed by any number of whitespace characters
+* followed by a URL or file path containing no whitespace characters
+* followed by at least one whitespace character
+* and then a human-readable description of the content
+
+The human-readable description is optional for links, but mandatory for images since it will be used as alt-text.
+
+```lark
+@   https://hd-dn.com   HD-DN
+!   /path/to/bird.png   A picture of a bird
+```
+
+Whether images are displayed inline or rendered as links is left up to the client.
+
+_ Blockquotes
+
+Blockquotes are
+
+* a single line
+* starting with a glyph
+* followed by any number of whitespace characters
+* and then some content
+
+```lark
+>This is a valid blockquote
+> This is also a valid blockquote
+```
+
+_ Lists
+
+Lists are
+
+* multiple lines
+* all of which are valid list items
+
+List items are
+
+* a single line
+* starting with a glyph
+* followed by any number of whitespace characters
+* and then some content
+
+```lark
+*this is a valid unordered list item
+* and so is this
+
+:this is a valid ordered list item
+: and so is this
+```
+
+Sequential list items of the same type are put into an unordered or ordered list block. For example,
+
+```lark
+# Here's an item
+# And another
+# A third
+```
+
+might get processed to something like
+
+'''
+Block(
+  type: OrderedList,
+  content: [
+    Block(type: ListItem, content: "Here's an item"),
+    Block(type: ListItem, content: "And another"),
+    Block(type: ListItem, content: "A third")
+  ]
+)
+'''
+
+_ Pre-formatted and code blocks
+
+Pre-formatted and code blocks are
+
+* a single line
+* starting with a glyph
+* followed by any number of whitespace characters
+* followed by an optional attribute, which can't contain whitespace characters and can only be specified if the block is being opened
+
+Using ''' or ``` will toggle the client into a preformatted mode. While in this mode, any text will be processed verbatim into the block. For example
+
+```lark
+'''
+    This is a pre-formatted block
+      So all
+    these spaces should appear in content.
+'''
+```
+
+might be processed into something like
+
+'''
+Block(
+  type: Preformatted,
+  content: [
+    "    This is a pre-formatted block",  
+    "      So all",
+    "    these spaces should appear in content."
+  ]
+)
+'''
+
+Pre and code blocks can take an optional attribute, for example
+
+```lark
+  '''poem
+  a
+    poem is a type
+  of written
+     WORD!
+  '''
+```
+
+would give this block the "poem" attribute, which might be useful to the client in some way.
+
+_ Sections and articles
+
+Sections and articles are
+
+* multiple lines
+* all containing valid lark
+* separated by dividers
+
+Section and article dividers are
+
+* a single line
+* starting with a glyph
+* followed by any number of whitespace characters
+
+```lark
+***
+```
+
+or 
+
+```lark
+---
+```
+
+Everything in a lark implicitly lives within an article and a section. When a divider is used, the current context ends and a new one begins. When the article divider is used it also ends the current section and starts a new one within the new article: you will never have sections that span multiple articles.
+
+
+***
+
+- Reference
+
+What follows is a lark reference document that can be used to test client rendering.
+
+---
+
+=lark Reference Document
+~hannah
++2023-07-28
+
+- Purpose
+This document contains every lark block and can be used to test client rendering.
+
+***
+- Items
+_ Paragraphs
+This is a paragraph of text.
+
+This is another, and so is the line above, which is blank.
+
+---
+_ Lists
+
+* This is the first element of an unordered list
+* This is the second
+: This is the first element of an ordered list
+: This is the second
+
+---
+_ Links and images
+
+So here's a link
+@ https://hd-dn.com HD-DN
+
+and here's an image
+! https://hd-dn.com/img/2023-03-10-2/PICT0580.jpg Example image
+
+---
+_ Blockquotes
+
+> Here is an example blockquote
+
+---
+_ Preformatted block
+
+'''
+This text should
+     all
+     be
+     pre-formatted! ! !
+'''
+
+---
+_ Code block
+
+```go
+package main
+
+import (
+  "fmt"
+)
+
+func main() {
+  fmt.Println("hi!")
+}
+```
+
+***
+
+- Conclusion
+
+Hopefully this has all rendered correctly!

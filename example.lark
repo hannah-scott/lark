@@ -1,0 +1,12 @@
+= Test Document
+
+this is a paragraph
+'''
+We're testing pre code
+'''
+this is a paragraph
+```
+and we're testing code
+'''
+```
+this is a paragraph

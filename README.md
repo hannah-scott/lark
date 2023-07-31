@@ -1,6 +1,6 @@
 # lark
 
-A light markup language in the public domain.
+lark is a lightweight markup language designed for my website, HD-DN. The language is in the public domain and I exert no rights over it.
 
 ## Structure
 

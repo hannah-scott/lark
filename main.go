@@ -9,7 +9,7 @@ import (
 
 func main() {
 	// Read in reference file
-	content, err := ioutil.ReadFile("reference/index.lark")
+	content, err := ioutil.ReadFile("docs/index.lark")
 	if err != nil {
 		panic(err)
 	}
@@ -17,7 +17,7 @@ func main() {
 	lines := strings.Split(text, "\n")
 	lark := encodeLark(lines)
 
-	f, err := os.Create("reference/index.html")
+	f, err := os.Create("docs/index.html")
 	if err != nil {
 		panic(err)
 	}

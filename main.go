@@ -33,4 +33,9 @@ func main() {
 		panic(err)
 	}
 	f.Sync()
+
+	err = lark2md(lark)
+	if err != nil {
+		panic(err)
+	}
 }
